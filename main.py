@@ -7,6 +7,11 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QPushButton, QVBoxLayo
                                QWidget, QInputDialog, QMessageBox, QListWidget,
                                QHBoxLayout, QAbstractItemView)
 
+def natural_sort_key(s):
+    """自然順ソート用のキー関数"""
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split('([0-9]+)', s)]
+
 class SaveFileCopier(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -80,8 +85,10 @@ class SaveFileCopier(QMainWindow):
                         for existing in os.listdir(dst_base_dir):
                             existing_path = os.path.join(dst_base_dir, existing)
                             if os.path.isdir(existing_path) and self.simple_hash(existing_path) == src_hash:
-                                reply = QMessageBox.question(self, "確認", "同じ内容があります。保存しますか？",
-                                                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                                reply = QMessageBox.question(
+                                    self, "確認", "同じ内容があります。保存しますか？",
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                                )
                                 if reply == QMessageBox.Yes:
                                     found_duplicate = True
                                 break
@@ -101,8 +108,10 @@ class SaveFileCopier(QMainWindow):
             QMessageBox.warning(self, "エラー", "選択してください")
             return
 
-        if QMessageBox.question(self, "確認", f"{len(selected)}個削除しますか？",
-                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.No:
+        if QMessageBox.question(
+            self, "確認", f"{len(selected)}個削除しますか？",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        ) == QMessageBox.No:
             return
 
         base_dir = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "UNDERTALE-SAVEfiles")
@@ -117,7 +126,6 @@ class SaveFileCopier(QMainWindow):
 
         self.update_list()
 
-
     def load_save(self):
         selected_item = self.list_widget.currentItem()
         if not selected_item:
@@ -125,28 +133,33 @@ class SaveFileCopier(QMainWindow):
             return
 
         backup_name = selected_item.text()
-        backup_path = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "UNDERTALE-SAVEfiles", backup_name)
+        backup_path = os.path.join(
+            os.environ["USERPROFILE"], "AppData", "Local", "UNDERTALE-SAVEfiles", backup_name
+        )
         undertale_save_path = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "UNDERTALE")
 
-        # バックアップとUNDERTALEフォルダのファイルリストを比較
-        undertale_files = set(os.path.relpath(os.path.join(root, file), undertale_save_path)
-                              for root, _, files in os.walk(undertale_save_path) for file in files)
-        backup_files = set(os.path.relpath(os.path.join(root, file), backup_path)
-                          for root, _, files in os.walk(backup_path) for file in files)
+        undertale_files = set(
+            os.path.relpath(os.path.join(root, file), undertale_save_path)
+            for root, _, files in os.walk(undertale_save_path) for file in files
+        )
+        backup_files = set(
+            os.path.relpath(os.path.join(root, file), backup_path)
+            for root, _, files in os.walk(backup_path) for file in files
+        )
 
+        missing_files = undertale_files - backup_files
 
-        missing_files = undertale_files - backup_files # UNDERTALEに存在するが、バックアップにはないファイル
-
-        if missing_files: # 確認ダイアログ
+        if missing_files:
             missing_files_str = "\n".join(missing_files)
-            reply = QMessageBox.question(self, "確認",
-                                         f"「{backup_name}」をロードすると、以下のファイルが失われます:\n\n"
-                                         f"{missing_files_str}\n\nロードしますか？",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            reply = QMessageBox.question(
+                self, "確認",
+                f"「{backup_name}」をロードすると、以下のファイルが失われます:\n\n"
+                f"{missing_files_str}\n\nロードしますか？",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
             if reply == QMessageBox.No:
                 return
 
-        # 現在のUNDERTALEセーブフォルダを一時的にリネーム
         temp_backup_name = "temp_backup_" + os.path.basename(undertale_save_path)
         temp_backup_path = os.path.join(os.path.dirname(undertale_save_path), temp_backup_name)
 
@@ -161,20 +174,27 @@ class SaveFileCopier(QMainWindow):
             QMessageBox.information(self, "成功", f"「{backup_name}」をロードしました。")
 
         except Exception as e:
-            QMessageBox.critical(self, "エラー", f"ロードに失敗しました: {e}\n"
-                                              f"元のセーブデータは {temp_backup_path} に退避されています。")
+            QMessageBox.critical(
+                self, "エラー",
+                f"ロードに失敗しました: {e}\n"
+                f"元のセーブデータは {temp_backup_path} に退避されています。"
+            )
             if os.path.exists(temp_backup_path):
                 if os.path.exists(undertale_save_path):
                     shutil.rmtree(undertale_save_path)
                 os.rename(temp_backup_path, undertale_save_path)
 
-
     def update_list(self):
         base_dir = os.path.join(os.environ["USERPROFILE"], "AppData", "Local", "UNDERTALE-SAVEfiles")
         self.list_widget.clear()
-        if not os.path.exists(base_dir): return
+        if not os.path.exists(base_dir):
+            return
 
-        items = [item for item in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, item))]
+        items = [
+            item for item in os.listdir(base_dir)
+            if os.path.isdir(os.path.join(base_dir, item))
+        ]
+        items.sort(key=natural_sort_key)  # 自然順ソート
         self.list_widget.addItems(items)
 
 if __name__ == "__main__":
