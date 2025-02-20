@@ -27,9 +27,6 @@ class SaveFileCopier(QMainWindow):
         self.show_save_files()
 
     def dir_hash(self, dirpath):
-        """ディレクトリ全体のハッシュ値を計算する (簡易版)"""
-        #  注意: この方法は、ファイル名、ファイル内容、ディレクトリ構造が完全に一致する場合のみ同じハッシュ値を返します。
-        #        より厳密なハッシュ計算が必要な場合は、各ファイルのハッシュ値を計算し、それらを組み合わせてハッシュ値を生成するなどの方法を検討してください。
 
         hasher = hashlib.md5()
         for root, _, files in os.walk(dirpath):
